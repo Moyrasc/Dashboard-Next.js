@@ -1,4 +1,10 @@
-const { sql } = require('@vercel/postgres');
+const postgres = require('postgres')
+
+const sql = postgres(process.env.POSTGRES_URL, {
+  ssl: {
+    rejectUnauthorized: false
+  }
+})
 const {
   invoices,
   customers,
@@ -10,6 +16,7 @@ const bcrypt = require('bcrypt');
 async function seedUsers() {
   try {
     await sql`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`;
+    await sql`DROP TABLE IF EXISTS users;`;
     // Create the "invoices" table if it doesn't exist
     const createTable = await sql`
       CREATE TABLE IF NOT EXISTS users (
@@ -49,7 +56,7 @@ async function seedUsers() {
 async function seedInvoices() {
   try {
     await sql`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`;
-
+    await sql`DROP TABLE IF EXISTS invoices;`;
     // Create the "invoices" table if it doesn't exist
     const createTable = await sql`
     CREATE TABLE IF NOT EXISTS invoices (
@@ -66,10 +73,9 @@ async function seedInvoices() {
     // Insert data into the "invoices" table
     const insertedInvoices = await Promise.all(
       invoices.map(
-        (invoice) => sql`
+        async (invoice) => await sql`
         INSERT INTO invoices (customer_id, amount, status, date)
-        VALUES (${invoice.customer_id}, ${invoice.amount}, ${invoice.status}, ${invoice.date})
-        ON CONFLICT (id) DO NOTHING;
+        VALUES (${invoice.customer_id}, ${invoice.amount}, ${invoice.status}, ${invoice.date});
       `,
       ),
     );
@@ -89,7 +95,7 @@ async function seedInvoices() {
 async function seedCustomers() {
   try {
     await sql`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`;
-
+    await sql`DROP TABLE IF EXISTS customers;`;
     // Create the "customers" table if it doesn't exist
     const createTable = await sql`
       CREATE TABLE IF NOT EXISTS customers (
@@ -140,7 +146,7 @@ async function seedRevenue() {
     // Insert data into the "revenue" table
     const insertedRevenue = await Promise.all(
       revenue.map(
-        (rev) => sql`
+        async (rev) => await sql`
         INSERT INTO revenue (month, revenue)
         VALUES (${rev.month}, ${rev.revenue})
         ON CONFLICT (month) DO NOTHING;
@@ -163,6 +169,6 @@ async function seedRevenue() {
 (async () => {
   await seedUsers();
   await seedCustomers();
-  await seedInvoices();
+  // await seedInvoices();
   await seedRevenue();
 })();
